@@ -3,7 +3,7 @@ import { getOrder, type Order } from '../order-state.ts'
 import { emailCheckoutEnabled, sendSavedDelivery, validateValue } from '../email-delivery.ts'
 import { emailProduct } from '../../shared/email-products.ts'
 import { membershipDeliveryMessage } from '../email.ts'
-import { call, credentialHash, isDeliverySupplierPlan, mappings, DeliverySupplierReceiptRejected, products, purchaseReceipt, rate, USD_MICROS_PER_CENT, usdMicros, validateProduct, type Product, type SupplierOrder } from './client.ts'
+import { call, credentialHash, isDeliverySupplierPlan, productMapping, DeliverySupplierReceiptRejected, products, purchaseReceipt, rate, USD_MICROS_PER_CENT, usdMicros, validateProduct, type Product, type SupplierOrder } from './client.ts'
 
 type Purchase = { order_id: string; service_id: string; credential_hash: string; request_key: string; request_body: string; max_usd_cents: number; cny_per_usd: number; instructions: string; state: string; supplier_order: string | null; actual_usd_cents: number | null; actual_usd_micros: number | null; actual_cost_cents: number | null; value: string | null; attempted_at: number | null; lease_token: string | null; lease_until: number; next_check_at: number; updated_at: number }
 type Snapshot = { serviceId: string; fingerprint: string; ceiling: number; fx: number; instructions: string }
@@ -14,7 +14,7 @@ export function delivery_supplierCheckoutEnabled(env: Env) {
 }
 export async function delivery_supplierSnapshot(env: Env, plan: string, sale: number, supply: number | undefined, instructions: string, list?: Product[]): Promise<Snapshot> {
   if (!isDeliverySupplierPlan(plan) || !delivery_supplierCheckoutEnabled(env)) throw new ApiError('该商品自动发货暂未开放。', 409)
-  const mapping = mappings[plan], fx = rate(env), ceiling = mapping.maxUsdCents
+  const mapping = productMapping(env, plan), fx = rate(env), ceiling = mapping.maxUsdCents
   const cost = Math.ceil(ceiling * fx)
   if (cost >= sale || (supply !== undefined && (cost >= supply || supply > sale))) throw new ApiError('采购成本与售价不匹配。', 409)
   validateProduct(list ?? await products(env), mapping.id, ceiling)
@@ -40,7 +40,7 @@ export async function delivery_supplierCatalog<T extends { id: string; enabled: 
 async function prepareDelivery(env: Env, row: Purchase, lease: string) {
   if (!row.value || !env.RESEND_FROM) return
   const order = await getOrder(env, row.order_id), product = emailProduct(order.plan)!
-  const message = JSON.stringify({ from: env.RESEND_FROM, to: [order.customer_email], ...membershipDeliveryMessage(product.kind, order.id, row.value, row.instructions, order.plan) })
+  const message = JSON.stringify({ from: env.RESEND_FROM, to: [order.customer_email], ...membershipDeliveryMessage(product.kind, order.id, row.value, row.instructions, order.plan, env) })
   const event = crypto.randomUUID(), now = Date.now()
   await env.INTEREST_DB.batch([
     env.INTEREST_DB.prepare(`INSERT INTO email_deliveries(order_id,kind,value,instructions,mail_body,request_key,created_at,updated_at) SELECT id,?,?,?,?,?,?,? FROM orders WHERE id=? AND ${eligibility} AND EXISTS(SELECT 1 FROM delivery_supplier_orders n WHERE n.order_id=orders.id AND n.state='purchased' AND n.lease_token=?) ON CONFLICT DO NOTHING`).bind(product.kind, row.value, row.instructions, message, crypto.randomUUID(), now, now, order.id, lease),

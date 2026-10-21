@@ -1,6 +1,6 @@
 import { ApiError, body, json, type Env, type Value } from './platform.ts'
 import { requirePartner, partnerLimit } from './partner-auth.ts'
-import { paymentProvider } from './payments/providers.ts'
+import { directCheckoutEnabled, paymentMethods, paymentProvider, validatePaymentSelection } from './payments/providers.ts'
 import type { PaymentProvider, PaymentResult } from './payments/types.ts'
 import { INVOICE_STATUSES, invoiceAmounts, type Invoice, type InvoicePaymentView } from '../shared/invoices.ts'
 import { invoicePlatformPayload } from './invoice-platform.ts'
@@ -83,8 +83,10 @@ async function syncPayment(env: Env, p: Payment) {
   }
   await env.INTEREST_DB.prepare('UPDATE invoice_payments SET updated_at=? WHERE id=?').bind(Date.now(), p.id).run()
 }
-async function paymentAction(env: Env, invoice: Invoice, action: unknown, admin: boolean) {
-  if (!['create', 'query'].includes(String(action)) || (admin && action !== 'query')) throw new ApiError('支付操作无效。')
+async function paymentAction(env: Env, invoice: StoredInvoice, action: unknown, admin: boolean) {
+  if (!['options', 'create', 'query'].includes(String(action)) || (admin && action !== 'query')) throw new ApiError('支付操作无效。')
+  if (action === 'options') return json({ invoice: publicInvoice(invoice), payment: paymentView(await currentPayment(env, invoice.id), invoice), methods: paymentMethods(env) })
+  if (action === 'create' && !directCheckoutEnabled(env)) throw new ApiError('手续费收款尚未开放。', 503)
   await locked(env, invoice.id, async () => {
     if ((await getInvoice(env, invoice.id))!.status !== 'awaiting_payment') return
     let p = await currentPayment(env, invoice.id)
@@ -103,7 +105,7 @@ async function paymentAction(env: Env, invoice: Invoice, action: unknown, admin:
     }
   })
   const fresh = (await getInvoice(env, invoice.id))!
-  return json({ invoice: publicInvoice(fresh), payment: paymentView(await currentPayment(env, invoice.id), fresh) })
+  return json({ invoice: publicInvoice(fresh), payment: paymentView(await currentPayment(env, invoice.id), fresh), methods: paymentMethods(env) })
 }
 
 export async function invoiceRoutes(request: Request, env: Env, url: URL, admin = false) {
@@ -159,6 +161,7 @@ export async function invoiceRoutes(request: Request, env: Env, url: URL, admin 
   if (match[2] === '/payment' && request.method === 'POST') {
     const data = await body(request)
     await partnerLimit(env, 'invoice-payment:' + row.partner_id, 30, 60000)
+    if (data.action === 'create') validatePaymentSelection(data)
     return paymentAction(env, row, data.action, admin)
   }
   if (admin && request.method === 'POST' && ['/submit', '/complete'].includes(match[2])) {

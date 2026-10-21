@@ -85,7 +85,9 @@ npm run preview:worker
 
 默认访问 `http://127.0.0.1:8787`。需要前端热更新时，另开终端运行 `npm run dev`，访问 `http://127.0.0.1:5173`；API 请求会转发到本地 Worker。
 
-`.dev.vars` 保存本地配置，不应提交。远程部署时需创建自己的 Cloudflare 资源，并替换 `wrangler.jsonc` 中的占位配置。
+`.dev.vars` 保存本地配置，不应提交。远程部署请复制 `wrangler.production.example.jsonc` 为已忽略的 `wrangler.production.jsonc`，填写自己的 D1 与域名，再执行生产迁移、密钥配置及部署预检。完整步骤与所需支付/供应商资料见 [Workers 部署方案](docs/cloudflare-workers.md)。
+
+Workers 使用单店铺、单层代理界面；多店铺、自定义代理域名、分级代理、工单与安全事件审计目前仅在 Go 后端实现。站内直收目前只支持支付宝，聚合支付需要新增 Workers 适配器。
 
 ### 页面入口
 

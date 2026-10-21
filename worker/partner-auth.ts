@@ -1,4 +1,5 @@
 import { sendPartnerInvitationEmail, sendVerificationEmail } from './email.ts'
+import { verifyHuman } from './verification.ts'
 import { ApiError, body, cookie, hash, json, LOGIN_SESSION_SECONDS, randomToken, readCookie, type Env } from './platform.ts'
 
 export type Partner = { id: string; slug: string; name: string; email: string; active: number; version: number; auth_version: number; created_at: number }
@@ -64,6 +65,7 @@ export async function partnerAuth(request: Request, env: Env, path: string) {
     const data = await body(request); const email = emailValue(data.email)
     if (!mailConfigured(env)) throw new ApiError('邮箱登录尚未启用，请联系平台管理员配置邮件服务。', 503)
     await partnerLimit(env, 'partner-send-ip:' + (request.headers.get('CF-Connecting-IP') ?? 'local'), 10, 3600000)
+    await verifyHuman(request, env, data, 'partner_send')
     await partnerLimit(env, 'partner-send-minute:' + email, 1, 60000)
     await partnerLimit(env, 'partner-send-hour:' + email, 5, 3600000)
     const p = await env.INTEREST_DB.prepare('SELECT * FROM partners WHERE email=? AND active=1').bind(email).first<Partner>()
@@ -75,6 +77,7 @@ export async function partnerAuth(request: Request, env: Env, path: string) {
     const data = await body(request)
     if (!mailConfigured(env)) throw new ApiError('邮箱登录尚未启用。', 503)
     await partnerLimit(env, 'partner-verify-ip:' + (request.headers.get('CF-Connecting-IP') ?? 'local'), 20, 900000)
+    await verifyHuman(request, env, data, 'partner_verify')
     let challengeId = data.challenge
     if (data.email !== undefined) {
       const email = emailValue(data.email)

@@ -21,7 +21,7 @@ async function messageFor(env: Env, orderId: string, planName: string, partnerId
     contacts = (await supportContactsSettings(env)).contacts
   }
   const lines = [contacts.wechat && '微信：' + contacts.wechat, contacts.qq && 'QQ：' + contacts.qq, contacts.email && '邮箱：' + contacts.email].filter(Boolean)
-  return rechargeReminderMessage({ orderId, planName, contacts: lines.join('\n') || '请返回订单页面查看客服联系方式，或联系向您提供购买链接的服务商。' })
+  return rechargeReminderMessage({ orderId, planName, contacts: lines.join('\n') || '请返回订单页面查看客服联系方式，或联系向您提供购买链接的服务商。' }, env)
 }
 
 export async function sendDueRechargeReminders(env: Env, limit = 20) {

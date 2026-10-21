@@ -1,3 +1,4 @@
+import { storefrontOrigin } from './storefront-origin.ts'
 import { ApiError, hash, json, type Env } from './platform.ts'
 import { boundedResponseText } from './bounded-response.ts'
 import { emailValue, mailConfigured, partnerLimit } from './partner-auth.ts'
@@ -59,10 +60,10 @@ async function applicantGroup(env: Env, userId: number, preferred: number | null
 async function application(env: Env, userId: number) {
   return env.INTEREST_DB.prepare('SELECT * FROM telegram_partner_applications WHERE user_id=?').bind(userId).first<Application>()
 }
-function statusMessage(app: Application) {
-  return app.mail_status === 'sent' ? '代理已开通，邀请邮件已发送，请检查收件箱及垃圾邮件。\n工作台：https://shop.example.invalid/join\n登录时使用你的邮箱获取验证码。'
-    : app.mail_status === 'failed' ? '代理已开通，但邀请邮件暂未确认发送成功。请联系群管理员重发邀请。\n你也可直接前往 https://shop.example.invalid/join，使用申请邮箱获取验证码登录。'
-    : '代理已开通，邀请邮件正在发送，完成后会在这里通知你。\n工作台：https://shop.example.invalid/join'
+function statusMessage(app: Application, env: Env) {
+  return app.mail_status === 'sent' ? `代理已开通，邀请邮件已发送，请检查收件箱及垃圾邮件。\n工作台：${storefrontOrigin(env)}/join\n登录时使用你的邮箱获取验证码。`
+    : app.mail_status === 'failed' ? `代理已开通，但邀请邮件暂未确认发送成功。请联系群管理员重发邀请。\n你也可直接前往 ${storefrontOrigin(env)}/join，使用申请邮箱获取验证码登录。`
+    : `代理已开通，邀请邮件正在发送，完成后会在这里通知你。\n工作台：${storefrontOrigin(env)}/join`
 }
 function reset(s: Session) { s.step = 'idle'; s.wechat = ''; s.qq = ''; s.email = ''; s.expires_at = 0 }
 async function plan(env: Env, s: Session, text: string, callback: boolean): Promise<Reply> {
@@ -70,7 +71,7 @@ async function plan(env: Env, s: Session, text: string, callback: boolean): Prom
   const app = await application(env, userId)
   const command = text.split(/\s+/, 1)[0].toLowerCase()
   if (command === '/help') return reply(userId, '加入申请群后，直接在这里发送 /apply 或 /start，依次填写微信、QQ 和邮箱，确认后自动开通并发送邀请邮件。也可从群里的“申请代理”按钮进入。\n/status 查询结果，/cancel 取消填写，/restart 重新填写。')
-  if (command === '/status' || app) return reply(userId, app ? statusMessage(app) : '还没有提交申请，发送 /apply 开始填写。')
+  if (command === '/status' || app) return reply(userId, app ? statusMessage(app, env) : '还没有提交申请，发送 /apply 开始填写。')
   if (command === '/cancel' || text === 'apply_cancel') { reset(s); return reply(userId, '已取消，未提交的资料已清除。需要时发送 /apply 重新申请。') }
   if (command === '/start' || command === '/apply' || command === '/restart' || text === 'apply_restart') {
     const start = text.match(/^\/start\s+apply_(-\d+)$/i)
@@ -78,7 +79,7 @@ async function plan(env: Env, s: Session, text: string, callback: boolean): Prom
     const groupId = start ? (await member(env, Number(start[1]), userId) ? Number(start[1]) : null) : await applicantGroup(env, userId, s.group_id)
     if (!groupId) return reply(userId, '请先加入申请群，再在这里发送 /apply 申请，也可点击群里的“申请代理”按钮。')
     reset(s); s.group_id = groupId; s.step = 'wechat'; s.expires_at = Date.now() + 3_600_000
-    return reply(userId, '申请 shop.example.invalid 代理\n微信和 QQ 会自动保存为你的商店联系方式并向客户展示；邮箱用于开户、邀请邮件和登录。管理员可查看申请资料。\n\n第 1/3 步：请输入微信号（不是昵称）。\n填写中可用 /cancel 取消；1 小时未完成需重新申请。')
+    return reply(userId, '申请商城代理\n微信和 QQ 会自动保存为你的商店联系方式并向客户展示；邮箱用于开户、邀请邮件和登录。管理员可查看申请资料。\n\n第 1/3 步：请输入微信号（不是昵称）。\n填写中可用 /cancel 取消；1 小时未完成需重新申请。')
   }
   if (s.expires_at <= Date.now() || s.step === 'idle') { reset(s); return reply(userId, '发送 /apply 开始申请；填写已过期时可用 /restart 重填。') }
   if (callback && text !== 'apply_confirm:' + s.expires_at) return reply(userId, '这个按钮已失效，请使用最新的确认按钮。')
@@ -147,7 +148,7 @@ export async function telegramWebhook(request: Request, env: Env): Promise<Respo
     let response: Reply | null = null
     if (chat.type !== 'private') {
       response = command?.[1].toLowerCase() === 'groupid' ? reply(chat.id, `本群 ID：${chat.id}`)
-        : reply(chat.id, '申请 shop.example.invalid 代理：点击按钮，在私聊中填写资料并确认。', [[{ text: '申请代理', url: `https://t.me/${env.TELEGRAM_BOT_USERNAME}?start=apply_${chat.id}` }]])
+        : reply(chat.id, '申请商城代理：点击按钮，在私聊中填写资料并确认。', [[{ text: '申请代理', url: `https://t.me/${env.TELEGRAM_BOT_USERNAME}?start=apply_${chat.id}` }]])
     } else {
       await db.prepare('INSERT INTO telegram_partner_sessions(user_id,lock_token,lock_until) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET lock_token=excluded.lock_token,lock_until=excluded.lock_until WHERE telegram_partner_sessions.lock_until<=?').bind(from.id, lockToken, now + LOCK, now).run()
       const s = await db.prepare('SELECT * FROM telegram_partner_sessions WHERE user_id=? AND lock_token=?').bind(from.id, lockToken).first<Session>()
@@ -213,7 +214,7 @@ export async function retryTelegramInvitations(env: Env) {
       }
       if (!claimed.notice_sent) {
         try {
-          await telegram(env, 'sendMessage', reply(row.user_id, statusMessage(claimed)))
+          await telegram(env, 'sendMessage', reply(row.user_id, statusMessage(claimed, env)))
           await db.prepare('UPDATE telegram_partner_applications SET notice_sent=1 WHERE id=? AND lock_token=?').bind(row.id, lockToken).run()
         } catch {
           await db.prepare('UPDATE telegram_partner_applications SET next_attempt_at=? WHERE id=? AND lock_token=?').bind(Date.now() + 3_600_000, row.id, lockToken).run()

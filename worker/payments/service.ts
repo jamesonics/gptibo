@@ -7,7 +7,7 @@ import { emailCheckoutEnabled } from '../email-delivery.ts'
 import { fulfillGmail, gmailCheckoutEnabled } from '../account_supplier/service.ts'
 import { ApiError, body, json, type Env } from '../platform.ts'
 import { getOrder, type Order } from '../order-state.ts'
-import { paymentProvider } from './providers.ts'
+import { alipayConfigured, paymentProvider, validatePaymentSelection } from './providers.ts'
 import type { PaymentOrder, PaymentResult, PaymentProvider } from './types.ts'
 
 export type Payment = { order_id: string; provider: string; account: string; amount_cents: number; state: 'pending' | 'paid' | 'closed'; trade_no: string | null; qr: string | null; expires_at: number; lease_token: string | null; lease_until: number; notified_at: number | null }
@@ -89,12 +89,16 @@ async function sync(env: Env, p: Payment, o: Order, close: boolean) {
 export async function paymentAction(request: Request, env: Env, order: Order, adminTest = false) {
   if (request.method !== 'POST') throw new ApiError('请通过订单发起支付操作。', 405)
   const data = await body(request)
-  if (!['create', 'query', 'close'].includes(String(data.action))) throw new ApiError('支付操作无效。')
+  if (!['options', 'create', 'query', 'close'].includes(String(data.action))) throw new ApiError('支付操作无效。')
+  if (data.action === 'create') validatePaymentSelection(data)
   if (order.redemption_blocked && data.action === 'create') throw new ApiError('本订单已禁止再次兑换，请联系支持。', 409)
   if (order.mode !== 'live') throw new ApiError('历史测试记录不能发起收款。', 409)
   const canCreate = (isXGiftPlan(order.plan) ? xgiftCheckoutEnabled(env) : order.plan === 'gmail-account' ? gmailCheckoutEnabled(env) : isDeliverySupplierPlan(order.plan) ? delivery_supplierCheckoutEnabled(env) : emailProduct(order.plan) ? emailCheckoutEnabled(env) : env.PAYMENT_CHECKOUT_ENABLED === 'true') || (adminTest && order.is_test === 1 && order.price_cents === 1 && !order.partner_id && env.PAYMENT_TEST_ENABLED === 'true')
   if (!(await env.INTEREST_LIMITER.limit({ key: 'payment:' + order.owner_hash })).success) throw new ApiError('操作较频繁，请稍后再试。', 429)
   let payment = await findPayment(env, order.id)
+  if (data.action === 'options') {
+    return json({ payment: payment ? { provider: payment.provider, status: payment.state, amountCents: payment.amount_cents, feeCents: 0, feeBps: 0, qr: !order.redemption_blocked && !order.refund_hold && payment.state === 'pending' && payment.expires_at > Date.now() ? payment.qr : null, expiresAt: payment.expires_at } : null, methods: canCreate && alipayConfigured(env) ? [{ method: 'alipay', name: '支付宝', feeBps: 0 }] : [] })
+  }
   if (!payment && data.action === 'create') {
     if (!canCreate) throw new ApiError('真实收款尚未开放。', 503)
     const provider = paymentProvider(env, emailProduct(order.plan) || isXGiftPlan(order.plan) ? 'alipay' : env.PAYMENT_PROVIDER ?? '')

@@ -1,3 +1,4 @@
+import { storefrontOrigin } from './storefront-origin.ts'
 import { type Env } from './platform.ts'
 import { boundedResponseText } from './bounded-response.ts'
 
@@ -42,14 +43,14 @@ async function feishu(path: string, payload: unknown, token?: string) {
 
 function money(cents: number) { return '¥' + (cents / 100).toFixed(2) }
 
-export function payoutMessage(row: Notification) {
+export function payoutMessage(row: Notification, env?: Env) {
   const lines = [
     '【提现申请】',
     '代理：' + row.partner_name + '（' + row.partner_slug + '）',
     '金额：' + money(row.amount_cents) + (row.deduction_cents > 0 ? '（抵扣售后退款 ' + money(row.deduction_cents) + '，抵扣前 ' + money(row.gross_cents) + '）' : ''),
     '收款：' + row.recipient,
     '时间：' + new Date(row.created_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }),
-    '后台：https://shop.example.invalid/admin/partners',
+    '后台：' + storefrontOrigin(env) + '/admin/partners',
   ]
   return lines.join('\n')
 }
@@ -61,7 +62,7 @@ async function send(env: Env, row: Notification) {
   await feishu('/im/v1/messages?receive_id_type=' + (recipient.startsWith('oc_') ? 'chat_id' : 'open_id'), {
     receive_id: recipient,
     msg_type: 'text',
-    content: JSON.stringify({ text: payoutMessage(row) }),
+    content: JSON.stringify({ text: payoutMessage(row, env) }),
     // Feishu drops duplicate sends that reuse a uuid, so retries stay idempotent.
     uuid: 'ymx-payout-' + row.payout_id,
   }, auth.tenant_access_token)

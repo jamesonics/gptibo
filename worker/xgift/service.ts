@@ -1,10 +1,11 @@
 import { ApiError, hash, type Env } from '../platform.ts'
+import { directCheckoutEnabled } from '../payments/providers.ts'
 import { type Order } from '../order-state.ts'
 import { isXGiftPlan, xUsername, xgiftPlans } from '../../shared/xgift-products.ts'
 import { configured, xgiftBackend, xgiftEligibility, xgiftProducts, xgiftBalance, xgiftCapabilities, createXGiftOrder, queryXGiftOrder, XGiftError, type XGiftOrder, type XGiftBackend } from './client.ts'
 export interface Preflight { token: string; owner_hash: string; username: string; recipient_id: string; product_code: string; points: number; expires_at: number; supplier_backend: XGiftBackend }
 interface Purchase { order_id: string; username: string; recipient_id: string; product_code: string; points: number; credential_hash: string; state: string; supplier_order: string | null; receipt: string | null; failure_code: string | null; lease_token: string | null; lease_until: number; attempted_at: number | null; next_check: number; supplier_backend: XGiftBackend; supplier_merchant_order_no: string | null; recovery_attempt: number }
-export const xgiftCheckoutEnabled = (env: Env, backend: XGiftBackend = xgiftBackend(env)) => env.XGIFT_CHECKOUT_ENABLED === 'true' && configured(env, backend)
+export const xgiftCheckoutEnabled = (env: Env, backend: XGiftBackend = xgiftBackend(env)) => env.XGIFT_CHECKOUT_ENABLED === 'true' && directCheckoutEnabled(env) && configured(env, backend)
 const credentials = (env: Env, backend: XGiftBackend) => hash(backend === 'platform'
   ? ['platform', env.XGIFT_PLATFORM_API_BASE ?? 'https://api.shop.example.invalid/v1', env.XGIFT_PLATFORM_KEY_ID, env.XGIFT_PLATFORM_CLIENT_SECRET].join('|')
   : [env.XGIFT_API_BASE ?? 'https://x-api.shop.example.invalid/v1', env.XGIFT_USER_ID, env.XGIFT_KEY_ID, env.XGIFT_CLIENT_SECRET].join('|'))

@@ -56,3 +56,7 @@ artifacts/*
 *.tar.gz
 .open-source-release/
 coverage/
+
+# Account-specific deployment configuration and database exports
+wrangler.production.jsonc
+backups/

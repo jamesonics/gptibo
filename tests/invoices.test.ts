@@ -13,7 +13,7 @@ const config = {
   ALIPAY_APP_ID: '2026000000000000', ALIPAY_SELLER_ID: '2088000000000000',
   ALIPAY_APP_PRIVATE_KEY: keys.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
   ALIPAY_PUBLIC_KEY: keys.publicKey.export({ type: 'spki', format: 'pem' }).toString(),
-  PAYMENT_NOTIFY_ORIGIN: 'https://shop.example.invalid',
+  PAYMENT_NOTIFY_ORIGIN: 'https://shop.example.invalid', ORDER_TESTING_ENABLED: 'false', PAYMENT_CHECKOUT_ENABLED: 'true',
 }
 const signature = (raw: string) => sign('RSA-SHA256', Buffer.from(raw), keys.privateKey).toString('base64')
 type Context = Parameters<Parameters<typeof test>[1]>[0]

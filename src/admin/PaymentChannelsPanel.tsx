@@ -8,7 +8,7 @@ import { api, errorMessage } from '@/lib/api'
 import { useResource } from '@/lib/use-resource'
 import { parseFeePercent, paymentFeeDraft } from './payment-settings-draft'
 
-type Settings = { feeRatesBps: Record<string, number>; provider: string; enabledProviders: string[]; version: number; checkout: boolean; channels: { id: string; name: string; configured: boolean }[] }
+type Settings = { readOnly?: boolean; feeRatesBps: Record<string, number>; provider: string; enabledProviders: string[]; version: number; checkout: boolean; channels: { id: string; name: string; configured: boolean }[] }
 
 export function PaymentChannelsPanel({ revision }: { revision: number }) {
   const [refresh, setRefresh] = useState(0)
@@ -43,6 +43,12 @@ export function PaymentChannelsPanel({ revision }: { revision: number }) {
     return <div className="payment-rate-field"><label htmlFor={`fee-${id}`}>{name}手续费</label><div className="payment-rate-control"><Input id={`fee-${id}`} type="text" inputMode="decimal" autoComplete="off" value={rateValues[id] ?? '0'} disabled={busy || loading} aria-invalid={!valid} aria-describedby={!valid ? 'payment-rate-error' : undefined} onChange={e => { setRates({ ...rateValues, [id]: e.target.value }); setMessage(''); setSaveError('') }} /><span aria-hidden="true">%</span></div></div>
   }
   const unused = data?.channels.filter(c => !choices.includes(c.id)) ?? []
+  if (data?.readOnly) return <section className="admin-panel payment-settings-panel">
+    <h2>收款状态</h2><p>支付宝官方：{data.channels[0]?.configured ? '已配置' : '待配置'} · {data.checkout ? '站内收款已开放' : '站内收款已关闭'}。</p>
+    <p>本站不加收支付手续费。收款开关与商户资料由部署配置管理。</p>
+    <p>ChatGPT 充值使用供货平台代收，开放状态请查看下方业务服务。</p>
+    <Feedback error={error} />
+  </section>
   return <section className="admin-panel payment-settings-panel">
     <div className="payment-settings-heading"><div className="payment-section-icon"><CreditCard size={19} /></div><div><h2>收款设置</h2><p>选择支付渠道，设置向客户加收的手续费。</p></div><span className={`connection-state ${data?.checkout ? 'is-ready' : ''}`}>{data ? data.checkout ? '收款已开放' : '收款已关闭' : '读取中'}</span></div>
     <Feedback error={error || saveError} loading={loading} data={data} shape="compact" />

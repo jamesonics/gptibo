@@ -1,0 +1,89 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gptibo-prod",
+  "compatibility_date": "2026-09-26",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "ORDER_TESTING_ENABLED": "false",
+    "EMAIL_PRODUCTS_ENABLED": "false",
+    "XGIFT_CHECKOUT_ENABLED": "false",
+    "PAYMENT_CHECKOUT_ENABLED": "false",
+    "PAYMENT_TEST_ENABLED": "false",
+    "RECHARGE_CHECKOUT_ENABLED": "false",
+    "ACCOUNT_SUPPLIER_CHECKOUT_ENABLED": "false",
+    "DELIVERY_SUPPLIER_CHECKOUT_ENABLED": "false",
+    "PAYMENT_PROVIDER": "alipay",
+    "TURNSTILE_ENABLED": "false",
+    "AUTH_TURNSTILE_ENABLED": "false",
+    "STOREFRONT_ORIGIN": "https://shop.example.invalid",
+    "PAYMENT_NOTIFY_ORIGIN": "https://shop.example.invalid"
+  },
+  "main": "worker/index.ts",
+  "d1_databases": [
+    {
+      "binding": "INTEREST_DB",
+      "database_name": "gptibo-prod",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "INTEREST_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    },
+    {
+      "name": "API_LIMITER",
+      "namespace_id": "1002",
+      "simple": {
+        "limit": 120,
+        "period": 60
+      }
+    },
+    {
+      "name": "EXPENSIVE_LIMITER",
+      "namespace_id": "1003",
+      "simple": {
+        "limit": 90,
+        "period": 60
+      }
+    }
+  ],
+  "assets": {
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*"
+    ],
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "routes": [
+    {
+      "pattern": "shop.example.invalid",
+      "custom_domain": true
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": false
+    }
+  },
+  "limits": {
+    "cpu_ms": 30000
+  }
+}

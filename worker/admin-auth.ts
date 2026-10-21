@@ -1,6 +1,7 @@
 import { ApiError, body, cookie, hash, json, LOGIN_SESSION_SECONDS, randomToken, readCookie, type Env } from './platform.ts'
 import { validTotpSecret, verifyTotp } from './totp.ts'
 import { sendVerificationEmail } from './email.ts'
+import { verifyHuman } from './verification.ts'
 
 // Server-owned destination; request parameters cannot override it.
 export function adminLoginEmail(env: Env) {
@@ -29,9 +30,9 @@ async function reserveAttempt(env: Env, key: string, now: number, maximum: numbe
 }
 export async function authRoute(request: Request, env: Env, path: string) {
   if (path === '/api/admin/session' && request.method === 'GET') {
-    if (!configured(env)) return json({ configured: false, authenticated: false, mailReady: mailReady(env) })
-    try { await requireAdmin(request, env); return json({ configured: true, authenticated: true, mailReady: mailReady(env), username: env.ADMIN_USERNAME }) }
-    catch (e) { if (e instanceof ApiError && e.status === 401) return json({ configured: true, authenticated: false, mailReady: mailReady(env) }); throw e }
+    if (!configured(env)) return json({ backend: 'workers', configured: false, authenticated: false, mailReady: mailReady(env) })
+    try { await requireAdmin(request, env); return json({ backend: 'workers', configured: true, authenticated: true, mailReady: mailReady(env), username: env.ADMIN_USERNAME }) }
+    catch (e) { if (e instanceof ApiError && e.status === 401) return json({ backend: 'workers', configured: true, authenticated: false, mailReady: mailReady(env) }); throw e }
   }
   if (path === '/api/admin/login/email-code' && request.method === 'POST') {
     const data = await body(request), db = env.INTEREST_DB
@@ -39,6 +40,7 @@ export async function authRoute(request: Request, env: Env, path: string) {
     if (typeof data.username !== 'string' || !data.username.trim() || data.username.length > 80) throw new ApiError('请填写管理员用户名。')
     const now = Date.now(), ip = request.headers.get('CF-Connecting-IP') ?? 'local'
     await reserveAttempt(env, await hash('admin-email-send-ip:' + ip), now, 10, 3600000)
+    await verifyHuman(request, env, data, 'admin_send')
     const id = crypto.randomUUID()
     const result = { challenge: id, message: '若用户名正确，验证码已发送至预设管理员邮箱，10 分钟内有效。', retryAfter: 60 }
     // Unknown usernames get the same response, without sending any email.
@@ -71,6 +73,7 @@ export async function authRoute(request: Request, env: Env, path: string) {
     await reserveAttempt(env, key, now, 8)
     // A shared account limit also bounds distributed guesses of the six-digit code.
     await reserveAttempt(env, accountKey, now, 30)
+    await verifyHuman(request, env, data, 'admin_verify')
     const db = env.INTEREST_DB
     if (typeof data.challenge !== 'string' || !/^[a-f0-9-]{36}$/.test(data.challenge) || typeof data.emailCode !== 'string' || !/^\d{6}$/.test(data.emailCode)) throw invalidLogin()
     const version = await credentialVersion(env)

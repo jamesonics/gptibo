@@ -14,6 +14,7 @@ import { invoiceNotification, reconcileInvoicePayments } from './invoices.ts'
 import { sendDueRechargeReminders } from './recharge-reminders.ts'
 import { reconcileGmail } from './account_supplier/service.ts'
 import { requireSecureTransport, secureResponse } from './security.ts'
+import { runScheduledTasks } from './scheduled-tasks.ts'
 const json = (value: unknown, status = 200) => Response.json(value, {
   status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...(status === 429 ? { 'Retry-After': '60' } : {}) },
 })
@@ -24,20 +25,30 @@ async function hash(value: string) {
 
 export default {
   async scheduled(event: { scheduledTime?: number }, env: Env) {
-    // Telegram's durable queue is independent of supplier reconciliation failures.
-    await retryTelegramInvitations(env).catch(() => { console.error('Telegram invitation queue temporarily unavailable') })
-    // Reminders run every minute; preserve the existing five-minute reconciliation cadence.
-    if (event.scheduledTime === undefined || Math.floor(event.scheduledTime / 60_000) % 5 === 0) {
-      await Promise.all([reconcilePayments(env), reconcileRecharge(env), retryPayoutNotifications(env), reconcileInvoicePayments(env)])
-      await reconcileRechargeRefunds(env)
-    }
-    await Promise.all([sendDueRechargeReminders(env), reconcileGmail(env), reconcileDeliverySupplier(env), reconcileXGift(env)])
+    const due = event.scheduledTime === undefined || Math.floor(event.scheduledTime / 60_000) % 5 === 0
+    const failed = await runScheduledTasks([
+      { name: 'telegram', run: () => retryTelegramInvitations(env) },
+      { name: 'reminders', run: () => sendDueRechargeReminders(env) },
+      { name: 'account-supplier', run: () => reconcileGmail(env) },
+      { name: 'delivery-supplier', run: () => reconcileDeliverySupplier(env) },
+      { name: 'xgift', run: () => reconcileXGift(env) },
+      ...(due ? [
+        { name: 'payments', run: () => reconcilePayments(env) },
+        { name: 'recharge', run: () => reconcileRecharge(env) },
+        { name: 'payout-notifications', run: () => retryPayoutNotifications(env) },
+        { name: 'invoice-payments', run: () => reconcileInvoicePayments(env) },
+      ] : []),
+    ])
+    // Refund reconciliation follows payment/recharge checks even if another queue failed.
+    const refundFailed = due && await runScheduledTasks([{ name: 'refunds', run: () => reconcileRechargeRefunds(env) }])
+    if (failed || refundFailed) throw new Error('Scheduled reconciliation needs attention')
   },
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
       const transport = requireSecureTransport(request)
       return secureResponse(request, transport ?? await route(request, env))
     } catch {
+      console.error('worker-request-failed')
       return secureResponse(request, error('服务暂时不可用，请稍后重试。', 503))
     }
   },
@@ -52,6 +63,11 @@ async function route(request: Request, env: Env): Promise<Response> {
       return error('请求保护服务暂时不可用，请稍后重试。', 503)
     }
     if (url.pathname === '/api/telegram/webhook') return telegramWebhook(request, env)
+    if (url.pathname === '/api/health') {
+      if (request.method !== 'GET') return error('请通过 GET 检查服务。', 405)
+      await env.INTEREST_DB.prepare('SELECT version FROM partner_payout_accounts LIMIT 1').first()
+      return json({ ok: true })
+    }
     if (url.pathname === '/api/recharge/webhook') return rechargeWebhook(request, env)
     if (url.pathname === '/api/invoices/notify/alipay') return invoiceNotification(request, env)
     const notification = url.pathname.match(/^\/api\/payments\/notify\/([a-z0-9-]+)$/)

@@ -15,7 +15,10 @@
     "PAYMENT_TEST_ENABLED": "false",
     "RECHARGE_CHECKOUT_ENABLED": "false",
     "ACCOUNT_SUPPLIER_CHECKOUT_ENABLED": "false",
-    "DELIVERY_SUPPLIER_CHECKOUT_ENABLED": "false"
+    "DELIVERY_SUPPLIER_CHECKOUT_ENABLED": "false",
+    "PAYMENT_PROVIDER": "alipay",
+    "TURNSTILE_ENABLED": "false",
+    "AUTH_TURNSTILE_ENABLED": "false"
   },
   "main": "worker/index.ts",
   "d1_databases": [
@@ -60,5 +63,17 @@
     "directory": "./dist",
     "not_found_handling": "single-page-application"
   },
-  "routes": []
+  "routes": [],
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": false
+    }
+  }
 }

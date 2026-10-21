@@ -7,7 +7,7 @@ import { signature } from '../shared/xgift-signature.ts'
 type Context = Parameters<Parameters<typeof test>[1]>[0]
 async function fixture(t: Context) {
   const s = await customerFixture(); t.after(() => s.db.close())
-  Object.assign(s.env, { ORDER_TESTING_ENABLED: 'false', XGIFT_CHECKOUT_ENABLED: 'true', XGIFT_API_BASE: 'https://x-api.example.test/v1', XGIFT_USER_ID: 'usr_fixture', XGIFT_KEY_ID: 'key_fixture', XGIFT_CLIENT_SECRET: 'test-only-secret' })
+  Object.assign(s.env, { ORDER_TESTING_ENABLED: 'false', PAYMENT_CHECKOUT_ENABLED: 'true', PAYMENT_NOTIFY_ORIGIN: 'https://shop.example.invalid', ALIPAY_APP_ID: 'test-app', ALIPAY_SELLER_ID: 'test-seller', ALIPAY_APP_PRIVATE_KEY: 'test-only-key-not-used-by-supplier-mocks', ALIPAY_PUBLIC_KEY: 'test-only-key-not-used-by-supplier-mocks', XGIFT_CHECKOUT_ENABLED: 'true', XGIFT_API_BASE: 'https://x-api.example.test/v1', XGIFT_USER_ID: 'usr_fixture', XGIFT_KEY_ID: 'key_fixture', XGIFT_CLIENT_SECRET: 'test-only-secret' })
   // Retail is configured independently of procurement points; match the confirmed live admin prices.
   s.db.exec("UPDATE catalog_plans SET price_cents=CASE id WHEN 'x-premium-3m' THEN 3500 ELSE 5500 END WHERE product_id='x-premium'")
   const state = { eligible: true, recipient: '12345', capacity: true, points: 1700, creates: 0, queries: 0, lost: false, missing: false, success: false, wrongResult: false, failCheck: false, duringCreate: undefined as (() => Promise<void>) | undefined }

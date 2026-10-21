@@ -9,7 +9,7 @@ type Context = Parameters<Parameters<typeof test>[1]>[0]
 
 async function fixture(t: Context) {
   const s = await customerFixture(); t.after(() => s.db.close())
-  Object.assign(s.env, { ORDER_TESTING_ENABLED: 'false', XGIFT_CHECKOUT_ENABLED: 'true', XGIFT_BACKEND: 'platform',
+  Object.assign(s.env, { ORDER_TESTING_ENABLED: 'false', PAYMENT_CHECKOUT_ENABLED: 'true', PAYMENT_NOTIFY_ORIGIN: 'https://shop.example.invalid', ALIPAY_APP_ID: 'test-app', ALIPAY_SELLER_ID: 'test-seller', ALIPAY_APP_PRIVATE_KEY: 'test-only-key-not-used-by-supplier-mocks', ALIPAY_PUBLIC_KEY: 'test-only-key-not-used-by-supplier-mocks', XGIFT_CHECKOUT_ENABLED: 'true', XGIFT_BACKEND: 'platform',
     XGIFT_PLATFORM_API_BASE: 'https://platform.example.test/v1', XGIFT_PLATFORM_KEY_ID: 'key_platform', XGIFT_PLATFORM_CLIENT_SECRET: 'test-platform-secret',
     XGIFT_API_BASE: 'https://legacy.example.test/v1', XGIFT_USER_ID: 'usr_fixture', XGIFT_KEY_ID: 'key_legacy', XGIFT_CLIENT_SECRET: 'test-legacy-secret' })
   s.db.exec("UPDATE catalog_plans SET price_cents=CASE id WHEN 'x-premium-3m' THEN 3500 ELSE 5500 END WHERE product_id='x-premium'")

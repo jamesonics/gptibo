@@ -1,6 +1,7 @@
 import { sendVerificationEmail } from './email.ts'
 import { ApiError, body, cookie, hash, json, LOGIN_SESSION_SECONDS, owner, randomToken, readCookie, type Env } from './platform.ts'
 import { emailValue, mailConfigured, partnerLimit } from './partner-auth.ts'
+import { verifyHuman } from './verification.ts'
 
 export async function customerEmail(request: Request, env: Env) {
   const token = readCookie(request, 'customer')
@@ -26,6 +27,7 @@ export async function recoveryRoutes(request: Request, env: Env, path: string) {
   if (path.endsWith('/send')) {
     const email = emailValue(data.email)
     await partnerLimit(env, 'recovery-ip:' + ip, 10, 3600000)
+    await verifyHuman(request, env, data, 'customer_send')
     await partnerLimit(env, 'recovery-minute:' + email, 1, 60000)
     await partnerLimit(env, 'recovery-hour:' + email, 5, 3600000)
     const id = crypto.randomUUID()
@@ -49,6 +51,7 @@ export async function recoveryRoutes(request: Request, env: Env, path: string) {
   }
   if (path.endsWith('/verify')) {
     await partnerLimit(env, 'recovery-verify:' + ip, 20, 900000)
+    await verifyHuman(request, env, data, 'customer_verify')
     if (typeof data.challenge !== 'string' || data.challenge.length !== 36 || typeof data.code !== 'string' || !/^\d{6}$/.test(data.code)) throw new ApiError('验证码无效或已过期。', 401)
     const challenge = await db.prepare('UPDATE customer_login_codes SET attempts=attempts+1 WHERE id=? AND attempts<5 AND used=0 AND expires_at>? RETURNING *').bind(data.challenge, now).first<{ email: string; code_hash: string }>()
     if (!challenge || challenge.code_hash !== await hash(env.PARTNER_AUTH_SECRET + ':customer:' + data.challenge + ':' + data.code)) throw new ApiError('验证码无效或已过期。', 401)

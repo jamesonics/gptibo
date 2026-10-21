@@ -6,6 +6,21 @@ export const mappings = {
   'duolingo-12m': { id: 'DEMO_PRODUCT_B', maxUsdCents: 38 },
 } as const
 export const isDeliverySupplierPlan = (plan: string): plan is keyof typeof mappings => Object.hasOwn(mappings, plan)
+export function productMapping(env: Env, plan: keyof typeof mappings): { id: string; maxUsdCents: number } {
+  if (!env.DELIVERY_SUPPLIER_PRODUCT_MAP) return mappings[plan]
+  try {
+    const mapping = JSON.parse(env.DELIVERY_SUPPLIER_PRODUCT_MAP)[plan]
+    if (!mapping || typeof mapping.id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(mapping.id) || !Number.isSafeInteger(mapping.maxUsdCents) || mapping.maxUsdCents < 1 || mapping.maxUsdCents > 10000000) throw new Error('invalid')
+    return { id: mapping.id, maxUsdCents: mapping.maxUsdCents }
+  } catch { throw new ApiError('自动发货商品映射未正确配置。', 503) }
+}
+function apiBase(env: Env) {
+  try {
+    const url = new URL(env.DELIVERY_SUPPLIER_API_BASE ?? 'https://delivery.example.invalid/api/v1')
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('invalid')
+    return url.href.replace(/\/$/, '')
+  } catch { throw new ApiError('自动发货接口地址未正确配置。', 503) }
+}
 export type Product = { service_id: string; name: string; price: number; stock: number; availability_state?: string }
 export type SupplierOrder = { order_id?: string; order_status?: string; service_id?: string; requested_quantity?: number; delivered_quantity?: number; charged_amount?: number; refunded_amount?: number; net_charged_amount?: number; partial_delivery?: boolean; delivered_products?: string[]; products?: string[]; retry_after_seconds?: number }
 export const USD_MICROS_PER_CENT = 10_000
@@ -20,7 +35,7 @@ export function rate(env: Env) {
   if (!Number.isFinite(value) || value <= 0 || value > 100) throw new ApiError('采购记账汇率未配置。', 503)
   return value
 }
-export const credentialHash = (env: Env) => hash(env.DELIVERY_SUPPLIER_API_KEY ?? '')
+export const credentialHash = (env: Env) => hash(apiBase(env) + '|' + (env.DELIVERY_SUPPLIER_API_KEY ?? ''))
 export function purchaseReceipt(id: string) {
   if (!/^[A-Za-z0-9_-]{1,124}$/.test(id)) throw new ApiError('采购编号格式无效。', 409)
   return 'ymx_' + id
@@ -31,7 +46,7 @@ export class DeliverySupplierReceiptRejected extends ApiError {
 export async function call<T>(env: Env, path: string, receipt?: string, payload?: string): Promise<T> {
   if (!env.DELIVERY_SUPPLIER_API_KEY) throw new ApiError('自动发货供应商尚未配置。', 503)
   try {
-    const response = await fetch('https://delivery.example.invalid/api/v1' + path, {
+    const response = await fetch(apiBase(env) + path, {
       method: payload ? 'POST' : 'GET', redirect: 'manual',
       headers: { 'X-API-Key': env.DELIVERY_SUPPLIER_API_KEY, Accept: 'application/json', ...(payload ? { 'Content-Type': 'application/json', 'Idempotency-Key': receipt! } : {}) },
       body: payload, signal: AbortSignal.timeout(15000),

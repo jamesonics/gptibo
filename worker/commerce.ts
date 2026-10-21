@@ -13,7 +13,8 @@ import { authRoute, requireAdmin } from './admin-auth.ts'
 import { emailValue, mailConfigured, partnerAuth } from './partner-auth.ts'
 import { adminPartnerRoutes, partnerCatalog, partnerRoutes, resolvePartner } from './partners.ts'
 import { paymentAction, reconcilePayments } from './payments/service.ts'
-import { alipayConfigured } from './payments/providers.ts'
+import { alipayConfigured, directCheckoutEnabled, paymentMethods, validatePaymentSelection } from './payments/providers.ts'
+import { verificationOptions, verifyHuman } from './verification.ts'
 import { paymentTesting } from './payments/testing.ts'
 import { supportContactsRoute, supportContactsSettings } from './support-contacts.ts'
 import { checkoutEnabled as supplierCheckoutEnabled, configured as supplierConfigured, productMap, RechargeError } from './recharge/client.ts'
@@ -65,6 +66,7 @@ function requiredNote(data: Record<string, unknown>) {
 export async function commerce(request: Request, env: Env): Promise<Response> {
   try {
     const url = new URL(request.url); const path = url.pathname; const method = request.method
+    if (path === '/api/orders/verification') return verificationOptions(request, env)
     const auth = await authRoute(request, env, path)
     if (auth) return auth
     const partnerLogin = await partnerAuth(request, env, path)
@@ -103,7 +105,7 @@ export async function commerce(request: Request, env: Env): Promise<Response> {
       const offers = (catalog.plans as Plan[]).map(plan => ({ ...plan, enabled: plan.enabled && (
         isXGiftPlan(plan.id) ? xgiftCheckoutEnabled(env) : plan.id === 'gmail-account' ? gmail : isDeliverySupplierPlan(plan.id) ? delivery_supplier : emailProduct(plan.id) ? email : testing || (live && Boolean(mapped[plan.id]))
       ) ? 1 : 0 }))
-      return json({ ...catalog, supportContacts: support.contacts, announcement, plans: offers, mode: live ? 'live' : 'demo', checkoutEnabled: testing || live || email || xgiftCheckoutEnabled(env), testingEnabled: testing }, 200, { 'Server-Timing': `catalog;dur=${(performance.now() - started).toFixed(1)}` })
+      return json({ ...catalog, backend: 'workers', paymentMethods: paymentMethods(env), supportContacts: support.contacts, announcement, plans: offers, mode: live ? 'live' : 'demo', checkoutEnabled: testing || live || email || xgiftCheckoutEnabled(env), testingEnabled: testing }, 200, { 'Server-Timing': `catalog;dur=${(performance.now() - started).toFixed(1)}` })
     }
     if (path === '/api/orders/client' && method === 'POST') {
       await body(request)
@@ -148,6 +150,9 @@ export async function commerce(request: Request, env: Env): Promise<Response> {
         return json({ order: await customerOrder(env, existing) })
       }
       const emailDelivery = Boolean(emailProduct(data.plan))
+      await verifyHuman(request, env, data, 'order_create')
+      validatePaymentSelection({ method: data.paymentMethod, expectedFeeBps: data.expectedFeeBps })
+      if (data.couponCode) throw new ApiError('当前商店暂不支持优惠码。', 409)
       const live = isXGiftPlan(data.plan) ? xgiftCheckoutEnabled(env) : data.plan === 'gmail-account' ? gmailCheckoutEnabled(env) : isDeliverySupplierPlan(data.plan) ? delivery_supplierCheckoutEnabled(env) : emailDelivery ? emailCheckoutEnabled(env) : supplierCheckoutEnabled(env)
       if (emailDelivery && !live) throw new ApiError('邮件交付商品暂未开放购买。', 409)
       if (env.ORDER_TESTING_ENABLED !== 'true' && !live) throw new ApiError('该服务暂未开放购买，请稍后再来。', 409)
@@ -231,6 +236,10 @@ export async function commerce(request: Request, env: Env): Promise<Response> {
 
 async function admin(request: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname; const method = request.method; const db = env.INTEREST_DB
+  if (path === '/api/admin/payments/settings') {
+    if (method !== 'GET') throw new ApiError('收款设置由部署配置管理。', 405)
+    return json({ readOnly: true, feeRatesBps: { alipay: 0 }, provider: 'alipay', enabledProviders: directCheckoutEnabled(env) ? ['alipay'] : [], version: 0, checkout: directCheckoutEnabled(env), channels: [{ id: 'alipay', name: '支付宝官方', configured: alipayConfigured(env) }] })
+  }
   if (path === '/api/admin/payments/reconcile' && method === 'POST') { await body(request); return json(await reconcilePayments(env)) }
   if (path === '/api/admin/recharge/reconcile' && method === 'POST') { await body(request); return json(await reconcileRecharge(env)) }
   if (path === '/api/admin/overview' && method === 'GET') {
@@ -324,6 +333,7 @@ async function admin(request: Request, env: Env, url: URL): Promise<Response> {
   if (planMatch && method === 'POST') {
     const data = await body(request); const note = requiredNote(data)
     if (!Number.isSafeInteger(data.priceCents) || Number(data.priceCents) < 1 || Number(data.priceCents) > 10000000 || typeof data.enabled !== 'boolean' || !Number.isInteger(data.version)) throw new ApiError('价格或商品状态无效。')
+    if (data.supportsWarranty === false) throw new ApiError('当前商店暂不支持关闭商品售后质保。', 409)
     if (data.partnerEnabled !== undefined && typeof data.partnerEnabled !== 'boolean') throw new ApiError('代理销售设置无效。')
     if ((data.purchaseNote !== undefined && (typeof data.purchaseNote !== 'string' || data.purchaseNote.length > 2000)) || (data.deliveryInstructions !== undefined && (typeof data.deliveryInstructions !== 'string' || data.deliveryInstructions.length > 2000))) throw new ApiError('商品说明最多 2000 字。')
     const plan = await db.prepare('SELECT * FROM catalog_plans WHERE id=?').bind(planMatch[1]).first<Plan>()

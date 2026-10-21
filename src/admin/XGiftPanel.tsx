@@ -2,6 +2,7 @@ import { useResource } from '@/lib/use-resource'
 import { Feedback } from '@/components/workspace-loading'
 import { ArrowUpRight } from 'lucide-react'
 type Connection = {
+  backend?: 'platform' | 'legacy'
   configured: boolean
   consoleUrl?: string
   balance?: { available: number; frozen: number }
@@ -17,14 +18,14 @@ export function XGiftPanel({ revision }: { revision: number }) {
     '/api/admin/xgift/status',
     revision,
   )
-  const platform = data?.consoleUrl === 'https://api.shop.example.invalid'
-  const consoleUrl = platform ? 'https://api.shop.example.invalid' : 'https://x-api.shop.example.invalid'
+  const platform = data?.backend === 'platform' || (!data?.backend && data?.consoleUrl === 'https://api.shop.example.invalid')
+  const consoleUrl = data?.configured && data.consoleUrl?.startsWith('https://') ? data.consoleUrl : undefined
   const amount = (value: number) => platform ? `¥${(value / 100).toFixed(2)}` : `${value} 点`
   return (
     <section className="integration-service-section">
       <div className="integration-section-title">
         <div><h2>X Premium</h2><p>供应商余额与套餐采购价格。</p></div>
-        <a className="integration-console-link" href={consoleUrl} target="_blank" rel="noreferrer">独立后台 <ArrowUpRight size={14} /></a>
+        {consoleUrl && <a className="integration-console-link" href={consoleUrl} target="_blank" rel="noreferrer">独立后台 <ArrowUpRight size={14} /></a>}
       </div>
       <Feedback data={data} loading={loading} error={error} shape="compact" />
       {data &&

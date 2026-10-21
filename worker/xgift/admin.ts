@@ -17,9 +17,10 @@ export async function xgiftAdmin(request: Request, env: Env, url: URL) {
     ])
     return json({
       configured: true,
+      backend: xgiftBackend(env),
       balance,
       products,
-      consoleUrl: xgiftBackend(env) === 'platform' ? 'https://api.shop.example.invalid' : 'https://x-api.shop.example.invalid',
+      consoleUrl: new URL(xgiftBackend(env) === 'platform' ? env.XGIFT_PLATFORM_API_BASE ?? 'https://api.shop.example.invalid/v1' : env.XGIFT_API_BASE ?? 'https://x-api.shop.example.invalid/v1').origin,
     })
   }
   if (url.pathname === '/api/admin/xgift/order') {

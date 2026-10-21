@@ -47,7 +47,7 @@ async function prepareEmail(env: Env, row: Purchase, lease: string) {
   if (!env.RESEND_API_KEY || !env.RESEND_FROM || !row.cards) return
   const order = await getOrder(env, row.order_id), cards = JSON.parse(row.cards) as { cardNo: string; cardPwd: string }[]
   const value = cards.map(c => c.cardNo + (c.cardPwd ? '\n密码：' + c.cardPwd : '')).join('\n\n')
-  const message = JSON.stringify({ from: env.RESEND_FROM, to: [order.customer_email], ...membershipDeliveryMessage('cdk', order.id, value, row.instructions, 'gmail-account') })
+  const message = JSON.stringify({ from: env.RESEND_FROM, to: [order.customer_email], ...membershipDeliveryMessage('cdk', order.id, value, row.instructions, 'gmail-account', env) })
   const event = crypto.randomUUID(), now = Date.now()
   await env.INTEREST_DB.batch([
     env.INTEREST_DB.prepare(`INSERT INTO email_deliveries(order_id,kind,value,instructions,mail_body,request_key,created_at,updated_at) SELECT id,'cdk',?,?,?,?,?,? FROM orders WHERE id=? AND ${eligibility} AND EXISTS(SELECT 1 FROM account_supplier_orders k WHERE k.order_id=orders.id AND k.state='purchased' AND k.lease_token=?) ON CONFLICT DO NOTHING`)

@@ -15,7 +15,9 @@ jobs:
       - run: npm run security:scan
       - run: npm run lint
       - run: npm test
-      - run: npm run build
+      - run: npm run worker:dry-run
+      - name: Verify D1 migrations on a fresh local database
+        run: npx wrangler d1 migrations apply INTEREST_DB --local --persist-to "$RUNNER_TEMP/worker-d1"
       - name: Scan for credentials
         env:
           GH_TOKEN: ${{ github.token }}

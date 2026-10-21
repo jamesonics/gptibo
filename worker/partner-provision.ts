@@ -1,3 +1,4 @@
+import { storefrontOrigin } from './storefront-origin.ts'
 import { ApiError, type Env, type Value } from './platform.ts'
 import { mailConfigured, type Partner } from './partner-auth.ts'
 import { generateReferralCode } from '../shared/partner-link.ts'
@@ -8,7 +9,7 @@ type TelegramSource = { userId: number; groupId: number; lockToken: string; wech
 export async function provisionPartner(env: Env, email: string, actor: string, telegram?: TelegramSource): Promise<Partner> {
   if (!mailConfigured(env)) throw new ApiError('请先启用邮件服务，开通后需要向代理发送登录邮件。', 503)
   const db = env.INTEREST_DB
-  if (await db.prepare('SELECT id FROM partners WHERE email=?').bind(email).first()) throw new ApiError('该邮箱已有代理账号，请在 https://shop.example.invalid/join 使用邮箱验证码登录，或联系管理员。', 409)
+  if (await db.prepare('SELECT id FROM partners WHERE email=?').bind(email).first()) throw new ApiError(`该邮箱已有代理账号，请在 ${storefrontOrigin(env)}/join 使用邮箱验证码登录，或联系管理员。`, 409)
   const id = crypto.randomUUID(), now = Date.now()
   const contactsChangeId = crypto.randomUUID()
   const guard = telegram ? 'EXISTS(SELECT 1 FROM telegram_partner_sessions WHERE user_id=? AND lock_token=? AND lock_until>? AND step=\'confirm\' AND expires_at>?)' : '1=1'
@@ -32,7 +33,7 @@ export async function provisionPartner(env: Env, email: string, actor: string, t
       if (!p) throw new ApiError('申请状态已更新，请重新申请。', 409)
       return p
     } catch (error) {
-      if (await db.prepare('SELECT id FROM partners WHERE email=?').bind(email).first()) throw new ApiError('该邮箱已有代理账号，请在 https://shop.example.invalid/join 使用邮箱验证码登录，或联系管理员。', 409)
+      if (await db.prepare('SELECT id FROM partners WHERE email=?').bind(email).first()) throw new ApiError(`该邮箱已有代理账号，请在 ${storefrontOrigin(env)}/join 使用邮箱验证码登录，或联系管理员。`, 409)
       if (!await db.prepare('SELECT id FROM partners WHERE slug=?').bind(slug).first()) throw error
     }
   }

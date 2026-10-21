@@ -2,14 +2,22 @@ import { emailTemplates } from './emails.generated.ts'
 import type { Env } from './platform.ts'
 import { membershipClaimUrl } from '../shared/membership-claim.ts'
 import { boundedResponseText } from './bounded-response.ts'
+import { storefrontOrigin } from './storefront-origin.ts'
+
+function templateFor(key: keyof typeof emailTemplates, env?: Env) {
+  const template = emailTemplates[key]
+  const origin = storefrontOrigin(env)
+  // Localize the template before substituting customer text or saving an idempotent payload.
+  return { subject: template.subject, html: template.html.replaceAll('https://shop.example.invalid', origin), text: template.text.replaceAll('https://shop.example.invalid', origin) }
+}
 
 export type VerificationKind = Exclude<keyof typeof emailTemplates, 'partner-welcome' | 'recharge-reminder' | 'delivery-link' | 'delivery-cdk' | 'delivery-duolingo-link' | 'delivery-gmail'>
 
-export function membershipDeliveryMessage(kind: 'link' | 'cdk', orderId: string, value: string, instructions: string, plan?: string) {
+export function membershipDeliveryMessage(kind: 'link' | 'cdk', orderId: string, value: string, instructions: string, plan?: string, env?: Env) {
   const claimUrl = plan === 'gmail-account' ? null : membershipClaimUrl(value)
   if (plan !== 'gmail-account' && kind === 'link' && !claimUrl) throw new Error('Invalid membership claim link')
   const duo = plan === 'duolingo-12m' || kind === 'cdk'
-  const template = emailTemplates[plan === 'gmail-account' ? 'delivery-gmail' : claimUrl && duo ? 'delivery-duolingo-link' : kind === 'link' ? 'delivery-link' : 'delivery-cdk']
+  const template = templateFor(plan === 'gmail-account' ? 'delivery-gmail' : claimUrl && duo ? 'delivery-duolingo-link' : kind === 'link' ? 'delivery-link' : 'delivery-cdk', env)
   const values: Record<string, string> = { __RECHARGE_DELIVERY_ORDER__: orderId, __RECHARGE_DELIVERY_VALUE__: value, __RECHARGE_DELIVERY_URL__: claimUrl ?? '', __RECHARGE_DELIVERY_INSTRUCTIONS__: instructions }
   const escape = (text: string) => text.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!)
   const pattern = /__RECHARGE_DELIVERY_(?:ORDER|VALUE|URL|INSTRUCTIONS)__/g
@@ -17,14 +25,14 @@ export function membershipDeliveryMessage(kind: 'link' | 'cdk', orderId: string,
 }
 
 export type RechargeReminderDetails = { orderId: string; planName: string; contacts: string }
-export function rechargeReminderMessage(details: RechargeReminderDetails) {
+export function rechargeReminderMessage(details: RechargeReminderDetails, env?: Env) {
   const values: Record<string, string> = {
     '__RECHARGE_REMINDER_ORDER_ID__': details.orderId,
     '__RECHARGE_REMINDER_PLAN_NAME__': details.planName,
     '__RECHARGE_REMINDER_CONTACTS__': details.contacts,
   }
   const escape = (value: string) => value.replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]!)
-  const template = emailTemplates['recharge-reminder']
+  const template = templateFor('recharge-reminder', env)
   // One pass prevents customer/partner text from being interpreted as another placeholder.
   const pattern = /__RECHARGE_REMINDER_(?:ORDER_ID|PLAN_NAME|CONTACTS)__/g
   return { subject: template.subject, html: template.html.replace(pattern, key => escape(values[key]).replaceAll('\n', '<br />')), text: template.text.replace(pattern, key => values[key]) }
@@ -41,14 +49,14 @@ export async function sendMembershipPreviewEmail(env: Env, to: string, message: 
   return result.id
 }
 
-export function partnerInvitationMessage() {
-  return emailTemplates['partner-welcome']
+export function partnerInvitationMessage(env?: Env) {
+  return templateFor('partner-welcome', env)
 }
 
-export function verificationMessage(kind: VerificationKind, code: string) {
+export function verificationMessage(kind: VerificationKind, code: string, env?: Env) {
   // Only server-generated codes enter the pre-rendered HTML; never accept arbitrary markup.
   if (!/^\d{6}$/.test(code)) throw new Error('Invalid verification code')
-  const template = emailTemplates[kind]
+  const template = templateFor(kind, env)
   return {
     subject: template.subject,
     html: template.html.replaceAll('__RECHARGE_VERIFICATION_CODE__', code),
@@ -57,11 +65,11 @@ export function verificationMessage(kind: VerificationKind, code: string) {
 }
 
 export async function sendVerificationEmail(env: Env, kind: VerificationKind, to: string, code: string, challenge: string) {
-  await sendEmail(env, to, verificationMessage(kind, code), kind + '/' + challenge)
+  await sendEmail(env, to, verificationMessage(kind, code, env), kind + '/' + challenge)
 }
 
 export async function sendPartnerInvitationEmail(env: Env, to: string, invitationId: string) {
-  await sendEmail(env, to, partnerInvitationMessage(), 'partner-welcome/' + invitationId)
+  await sendEmail(env, to, partnerInvitationMessage(env), 'partner-welcome/' + invitationId)
 }
 
 async function sendEmail(env: Env, to: string, message: { subject: string; html: string; text: string }, idempotencyKey: string) {

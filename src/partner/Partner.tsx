@@ -1,6 +1,7 @@
 import TicketWorkspace, { TicketCreator, TicketDetail } from '@/components/ticket-workspace'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { StoresWorkspace } from './StoresWorkspace'
+import { WorkersStoreSettings } from './WorkersStoreSettings'
 import { useAuthVerification } from '@/components/use-auth-verification'
 import { RECHARGE_STAGES, rechargeStage } from '../../shared/recharge-progress'
 import { ProductManagement } from './ProductManagement'
@@ -280,7 +281,7 @@ export function PartnerOrders({ path, revision }: { path: string; revision: numb
   const [draft, setDraft] = useState('')
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
-  const { data, error, loading } = usePartnerData<{ rows: PartnerOrder[]; total: number }>(path + '?page=' + page + '&q=' + encodeURIComponent(query) + '&status=' + encodeURIComponent(status), revision)
+  const { data, error, loading } = usePartnerData<{ backend?: 'workers'; rows: PartnerOrder[]; total: number }>(path + '?page=' + page + '&q=' + encodeURIComponent(query) + '&status=' + encodeURIComponent(status), revision)
   const labels: Record<string, string> = { pending: '待付款', session: '待提交', processing: '处理中', success: '已完成', failed: '需处理', cancelled: '已关闭' }
   return <section className="admin-panel partner-orders-panel">
     <div className="admin-panel-title partner-ledger-heading"><div><h2>推广订单</h2><p>{data ? `共 ${data.total} 笔订单 · ` : ''}收益随退款核算</p></div><span>价格按下单时记录</span></div>
@@ -296,7 +297,7 @@ export function PartnerOrders({ path, revision }: { path: string; revision: numb
           <TableCell className="partner-order-money" data-label="订单金额"><strong>{money(o.price_cents)}</strong><small>供货价 {money(o.cost_cents)}</small></TableCell>
           <TableCell className="partner-order-money" data-label="收益"><strong className={o.profit_cents > 0 ? 'partner-profit' : ''}>{money(o.profit_cents)}</strong><small>{profitLabel(o)}</small></TableCell>
           <TableCell className="partner-order-state" data-label="订单状态"><div className="partner-order-state-badges"><Badge variant={o.status === 'failed' && !o.refund_hold ? 'destructive' : 'secondary'} className="partner-order-status" data-state={status === '已完成' ? 'success' : undefined}>{status}</Badge><SettlementBadge status={o.payout_status} /></div></TableCell>
-          <TableCell className="partner-order-action" data-label="订单详情"><Button variant="outline" size="sm" onClick={() => setSelected(o)}>查看详情</Button>{path === '/api/partner/orders' && <Button variant="ghost" size="sm" onClick={() => setTicketOrder(o.id)}>提交工单</Button>}</TableCell>
+          <TableCell className="partner-order-action" data-label="订单详情"><Button variant="outline" size="sm" onClick={() => setSelected(o)}>查看详情</Button>{data.backend !== 'workers' && path === '/api/partner/orders' && <Button variant="ghost" size="sm" onClick={() => setTicketOrder(o.id)}>提交工单</Button>}</TableCell>
         </TableRow>
       })}</TableBody>
     </Table></div> : <div className="admin-empty"><h3>{query || status ? '没有符合条件的订单' : '还没有推广订单'}</h3><p>{query || status ? '试试其他订单号、邮箱或状态。' : '客户通过你的链接下单后，订单会显示在这里。'}</p></div>}<Pagination page={page} total={data.total} onPage={setPage} /></>}
@@ -454,7 +455,7 @@ function Workspace({
       description: '订单通知与工作台显示偏好',
       icon: Settings2,
     },
-  ]
+  ].filter(item => data?.backend !== 'workers' || !['tickets', 'children'].includes(item.id))
   const current = modules.find((item) => item.id === tab) ?? modules[0]
   if (!visited.includes(current.id)) setVisited([...visited, current.id])
   const navigate = (next: string) => {
@@ -470,7 +471,7 @@ function Workspace({
   const content: Record<string, ReactNode> = data
     ? {
         tickets: <TicketWorkspace revision={revision} active={current.id === 'tickets'} />,
-        stores: (
+        stores: data.backend === 'workers' ? <WorkersStoreSettings prefix={prefix} plans={data.plans} storeUrl={url} revision={revision} readOnly={Boolean(preview)} onSaved={saved} /> : (
           <StoresWorkspace
             prefix={prefix}
             revision={revision}
@@ -593,7 +594,7 @@ function Workspace({
           <WorkspaceTabs
             label="账号设置"
             items={[
-              {
+              ...(data.backend === 'workers' ? [] : [{
                 value: 'notifications',
                 label: '订单通知',
                 content: (
@@ -603,7 +604,7 @@ function Workspace({
                     readOnly={Boolean(preview)}
                   />
                 ),
-              },
+              }]),
               {
                 value: 'appearance',
                 label: '外观与动效',

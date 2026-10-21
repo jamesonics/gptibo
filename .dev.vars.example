@@ -3,7 +3,7 @@ ADMIN_USERNAME= # Configure locally; never commit a real value.
 ADMIN_EMAIL= # Configure locally; never commit a real value.
 ADMIN_TOTP_SECRET= # Configure locally; never commit a real value.
 
-# Partner email login (optional)
+# Required for partner login and customer order recovery (32+ random characters)
 RESEND_API_KEY= # Configure locally; never commit a real value.
 RESEND_FROM= # Configure locally; never commit a real value.
 PARTNER_AUTH_SECRET= # Configure locally; never commit a real value.
@@ -32,8 +32,6 @@ ALIPAY_PUBLIC_KEY= # Configure locally; never commit a real value.
 # Keep real purchases off until credentials, authorized products and callbacks are verified.
 RECHARGE_API_BASE="https://recharge.example.invalid/v1"
 RECHARGE_PARTNER_ID= # Configure locally; never commit a real value.
-# Optional platform application identifier; API requests are signed using Key ID.
-RECHARGE_APP_ID= # Configure locally; never commit a real value.
 RECHARGE_KEY_ID= # Configure locally; never commit a real value.
 RECHARGE_CLIENT_SECRET= # Configure locally; never commit a real value.
 RECHARGE_WEBHOOK_SECRET= # Configure locally; never commit a real value.
@@ -52,3 +50,23 @@ ACCOUNT_SUPPLIER_CHECKOUT_ENABLED="false"
 DELIVERY_SUPPLIER_API_KEY= # Configure locally; never commit a real value.
 DELIVERY_SUPPLIER_CHECKOUT_ENABLED=false
 DELIVERY_SUPPLIER_CNY_PER_USD= # Configure locally; never commit a real value.
+
+# Public storefront origin used in email links; use your real HTTPS domain in production.
+STOREFRONT_ORIGIN="https://shop.example.invalid"
+
+# Optional Turnstile. Each enabled protection requires both keys.
+TURNSTILE_ENABLED="false"
+AUTH_TURNSTILE_ENABLED="false"
+TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+
+# Delivery supplier URLs and product mapping must match its actual API contract.
+DELIVERY_SUPPLIER_API_BASE="https://delivery.example.invalid/api/v1"
+DELIVERY_SUPPLIER_PRODUCT_MAP='{"gemini-pro-18m":{"id":"DEMO_PRODUCT_A","maxUsdCents":60},"duolingo-12m":{"id":"DEMO_PRODUCT_B","maxUsdCents":38}}'
+
+# X gifting is optional; disabled until both payment and supplier are configured.
+XGIFT_CHECKOUT_ENABLED="false"
+XGIFT_BACKEND="platform"
+XGIFT_PLATFORM_API_BASE="https://api.shop.example.invalid/v1"
+XGIFT_PLATFORM_KEY_ID=
+XGIFT_PLATFORM_CLIENT_SECRET=
