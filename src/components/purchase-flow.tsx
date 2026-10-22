@@ -8,6 +8,7 @@ import { CopyButton } from './copy-button'
 import { Checkout, type CheckoutProps } from './checkout'
 import { AfterSales, PurchaseEmail, RefundContent } from './order-services'
 import { ProductMark } from './brand'
+import { BRAND_NAME } from '@/lib/branding'
 import { PurchaseNotice } from './purchase-notice'
 import { OrderSupportButton } from './order-support-button'
 import { OrderSupportGuideContext } from '@/lib/order-support-guide'
@@ -141,7 +142,7 @@ export function PurchaseFlow({ couponAvailable = false, shopSlug, notice, onClos
         {emailMode ? <PurchaseEmail couponAvailable={couponAvailable} shopSlug={shopSlug} purchasePlan={current.plan} price={current.price} key={`${shopSlug}:${current.plan}:${couponAvailable}`} paymentMethods={!checkout.testingEnabled && (xgift || emailProductInfo) ? paymentMethods ?? [] : undefined} plan={xgift ? current.plan : undefined} initialEmail={initialEmail} busy={Boolean(busy)} error={error ?? ''} inputRef={emailRef} onSubmit={onSubmitEmail} /> : typeof children === 'function' ? children(refreshTarget) : children ?? <Checkout key={order?.id} {...checkout} refreshTarget={refreshTarget} refreshDisabled={Boolean(busy) || salesBusy} />}
         <footer className="flow-footer" data-email-step={emailMode}>
           {emailMode ? <p><ShieldCheck size={14} />{xgift ? '仅用于订单通知与找回' : '用于商品交付、订单找回与服务联系，不订阅营销邮件。'}</p> : <>
-            <OrderSupportButton key={order?.id} contacts={order?.supportContacts} name={order?.partnerName ?? 'GPTibo'} disabled={busy || salesBusy || !order} guided={open && !showingSales && Boolean(supportReason) && supportReason !== dismissedSupportReason} onGuideDismiss={() => setDismissedSupportReason(supportReason)} />
+            <OrderSupportButton key={order?.id} contacts={order?.supportContacts} name={order?.partnerName ?? BRAND_NAME} disabled={busy || salesBusy || !order} guided={open && !showingSales && Boolean(supportReason) && supportReason !== dismissedSupportReason} onGuideDismiss={() => setDismissedSupportReason(supportReason)} />
             <div className="flow-footer-actions">
               <div ref={setRefreshTarget} className="flow-refresh-slot" />
               {order && <AfterSales testingEnabled={checkout.testingEnabled} order={order} onOpen={openSales} disabled={busy || salesBusy} expanded={showingSales} />}

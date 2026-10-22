@@ -77,7 +77,7 @@ npm run worker:dry-run
 
 ```sh
 npx wrangler login
-npx wrangler d1 create gptibo-prod
+npx wrangler d1 create jiaoton-prod
 test -e wrangler.production.jsonc || cp wrangler.production.example.jsonc wrangler.production.jsonc
 ```
 
@@ -85,7 +85,7 @@ test -e wrangler.production.jsonc || cp wrangler.production.example.jsonc wrangl
 
 编辑生产文件：
 
-1. 设置 `name` 为自己的生产 Worker 名称，例如 `gptibo-prod`。
+1. 设置 `name` 为自己的生产 Worker 名称，例如 `jiaoton-prod`。
 2. 将 `INTEREST_DB` 的 `database_id` 换成刚创建的 ID，`database_name` 与实际资源名称一致。绑定名始终是 `INTEREST_DB`。
 3. 将 `routes` 中的 `shop.example.invalid` 换成实际商店域名，保留 `custom_domain: true`。
 4. 将 `vars.STOREFRONT_ORIGIN` 和 `vars.PAYMENT_NOTIFY_ORIGIN` 都设置成该域名的 HTTPS origin，例如 `https://shop.example.com`，不附带路径或查询参数。前者用于邮件/通知链接，后者用于支付宝回调。

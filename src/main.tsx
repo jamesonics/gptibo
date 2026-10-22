@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import Root from './Root.tsx'
 import { RechargeSitePreview } from './components/recharge-site-preview'
+import { BRAND_NAME } from './lib/branding'
 const SessionPrecheckPreview = import.meta.env.DEV ? lazy(() => import('./components/session-precheck-preview')) : null
 
 // Apply the saved appearance before React mounts to avoid a light flash.
@@ -10,7 +11,7 @@ try { if (localStorage.getItem('ymx-theme') === 'dark') document.documentElement
 
 // Storefront HTML stays neutral until its catalog identifies the shop.
 if (location.pathname === '/admin' || location.pathname.startsWith('/admin/') || ['/join', '/join/', '/partner'].includes(location.pathname)) {
-  document.title = location.pathname.startsWith('/admin') ? '管理工作台 · GPTibo' : '代理工作台 · GPTibo'
+  document.title = location.pathname.startsWith('/admin') ? `管理工作台 · ${BRAND_NAME}` : `代理工作台 · ${BRAND_NAME}`
 }
 
 createRoot(document.getElementById('root')!).render(

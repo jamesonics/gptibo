@@ -1,4 +1,5 @@
 import { useStorefrontI18n } from '@/lib/storefront-i18n'
+import { BRAND_NAME } from '@/lib/branding'
 import { useEffect, useState } from 'react'
 import { ArrowRight, Check, ChevronRight, Clock3, CreditCard, FileKey2, LifeBuoy, Monitor, Moon, Search, ShieldCheck, Sparkles, Sun, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -62,13 +63,13 @@ function App() {
   const store = useStore(page)
   const partnerSlug = store.partner?.slug
   const platformBrand = store.catalogReady && !store.partner
-  const brandName = store.partner?.brandName || (platformBrand ? 'GPTibo' : t('商店'))
+  const brandName = store.partner?.brandName || (platformBrand ? BRAND_NAME : t('商店'))
   const brandLogo = store.partner?.logo || ''
   const pageTitle = store.partner?.pageTitle
   const description = store.partner?.description || t('AI 订阅、语言学习与工具服务，在这里按需选择。')
   useEffect(() => {
     document.querySelector('meta[name="description"]')?.setAttribute('content', description)
-    document.title = pageTitle || (platformBrand ? translateStorefront(locale, 'GPTibo · 会员订阅与工具服务') : brandName)
+    document.title = pageTitle || (platformBrand ? translateStorefront(locale, `${BRAND_NAME} · 会员订阅与工具服务`) : brandName)
     const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
     if (icon) { icon.href = brandLogo || (platformBrand ? '/favicon.svg' : '/brands/shop.svg'); icon.type = brandLogo ? 'image/png' : 'image/svg+xml' }
   }, [brandName, platformBrand, brandLogo, locale, pageTitle, description])

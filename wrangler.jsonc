@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "gptibo-local",
+  "name": "jiaoton-local",
   "compatibility_date": "2026-09-26",
   "compatibility_flags": [
     "nodejs_compat"
@@ -24,7 +24,7 @@
   "d1_databases": [
     {
       "binding": "INTEREST_DB",
-      "database_name": "gptibo-local",
+      "database_name": "jiaoton-local",
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }

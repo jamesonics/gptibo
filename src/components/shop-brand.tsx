@@ -1,4 +1,5 @@
 import { BrandMark } from './brand'
+import { BRAND_NAME } from '@/lib/branding'
 import { useState } from 'react'
 import { Store } from 'lucide-react'
 import './shop-brand.css'
@@ -11,5 +12,5 @@ function ShopLogo({ logo }: { logo: string }) {
 
 export function ShopBrand({ name, logo, pending = false, platform = false }: { name?: string; logo?: string; pending?: boolean; platform?: boolean }) {
   if (pending) return <span className="shop-brand-placeholder" aria-hidden="true"><i /><i /></span>
-  return <>{logo ? <ShopLogo key={logo} logo={logo} /> : platform ? <BrandMark /> : <Store aria-hidden="true" />}<span className="shop-brand-name">{name || (platform ? <>Recharge <span className="brand-ai">AI</span></> : '商店')}</span></>
+  return <>{logo ? <ShopLogo key={logo} logo={logo} /> : platform ? <BrandMark /> : <Store aria-hidden="true" />}<span className="shop-brand-name">{name || (platform ? BRAND_NAME : '商店')}</span></>
 }

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } f
 import { ArrowRight, Headset, Info, Mail, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from './copy-button'
+import { BRAND_NAME } from '@/lib/branding'
 import type { SupportContacts } from '../../shared/support-contacts'
 import './order-support-button.css'
 
@@ -129,7 +130,7 @@ export function OrderSupportButton({
                   <span className="order-support-badge">联系方式</span>
                 </div>
                 <Popover.Description className="order-support-desc">
-                  {name || 'GPTibo'}
+                  {name || BRAND_NAME}
                 </Popover.Description>
               </div>
             </header>
