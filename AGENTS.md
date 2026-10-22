@@ -1,5 +1,16 @@
 # 项目协作规则
 
+## 项目定位(2026-10-22 起生效)
+
+本项目已从商业代充/发卡计划**转为技术学习项目**,后续所有任务在此前提下开展:
+
+- 不做商业闭环:不接入真实支付通道(支付宝/易支付/虚拟币),不接入真实供货商;所有 `*_CHECKOUT_ENABLED`、`PAYMENT_TEST_ENABLED` 等交易开关保持 `false`,不产生任何真实交易。
+- 支付与供货相关代码(`worker/payments/`、`worker/recharge/`、`delivery_supplier/`、`account_supplier/`)仅作为**协议学习对象**:可以阅读、注释、写分析文档,但不配置真实商户凭据,不发起真实调用。
+- 持续方向:把项目改造成自己的作品——前端样式与品牌定制(React 19 + Tailwind,入口 `src/`)、后端功能理解与改进(Workers + D1,入口 `worker/`)、部署与运维学习(wrangler、CI、`docs/cloudflare-workers.md`)。
+- 学习目标含:研究上游卡台(供货平台)与本系统的对接协议(签名、回调、幂等、对账),以理解为目的,不实际对接。
+- 当前部署:https://jiaotonai.cc(Cloudflare Workers 免费版,D1 `gptibo-prod`);生产配置 `wrangler.production.jsonc` 不入库。
+- 原有安全约束继续有效:密钥与凭据不进 Git;Cloudflare/Resend 控制台只增不改不删;密钥不贴进聊天。
+
 ## Git 版本管理
 
 - 用户要求：每次完成代码改动及相应验证后，都要及时保存为 Git 提交，不能只部署而不提交。
