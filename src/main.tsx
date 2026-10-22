@@ -1,21 +1,19 @@
-import { StrictMode, lazy, Suspense } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import Root from './Root.tsx'
-import { RechargeSitePreview } from './components/recharge-site-preview'
 import { BRAND_NAME } from './lib/branding'
-const SessionPrecheckPreview = import.meta.env.DEV ? lazy(() => import('./components/session-precheck-preview')) : null
 
 // Apply the saved appearance before React mounts to avoid a light flash.
 try { if (localStorage.getItem('ymx-theme') === 'dark') document.documentElement.classList.add('dark') } catch { /* default light */ }
 
-// Storefront HTML stays neutral until its catalog identifies the shop.
-if (location.pathname === '/admin' || location.pathname.startsWith('/admin/') || ['/join', '/join/', '/partner'].includes(location.pathname)) {
+// Existing protected workspaces retain their own entry points.
+if (location.pathname === '/admin' || location.pathname.startsWith('/admin/') || ['/join', '/join/', '/partner', '/partner/'].includes(location.pathname)) {
   document.title = location.pathname.startsWith('/admin') ? `管理工作台 · ${BRAND_NAME}` : `代理工作台 · ${BRAND_NAME}`
 }
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {SessionPrecheckPreview && location.pathname === '/__preview/session-precheck' ? <Suspense fallback={null}><SessionPrecheckPreview /></Suspense> : window.parent !== window && window.frameElement?.getAttribute('data-guide-scene') === 'package' ? <RechargeSitePreview /> : <Root />}
+    <Root />
   </StrictMode>,
 )

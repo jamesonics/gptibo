@@ -3,7 +3,7 @@ import { Mail } from 'lucide-react'
 
 export function BrandMark({ className = '' }: { className?: string }) {
   return <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" className={className}>
-    <path d="M9 24V13c0-4 3-7 7-7M16 26V13c0-4 3-7 7-7M23 24V15" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
+    <text x="9" y="26" fontFamily="Georgia,serif" fontStyle="italic" fontSize="30" fill="currentColor">f</text>
   </svg>
 }
 export function ProductMark({ small = false, productId = 'chatgpt' }: { small?: boolean; productId?: string }) {

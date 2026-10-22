@@ -1,6 +1,26 @@
-# GPTibo 部署方案：Cloudflare Workers + D1
+# 初构 · Firstform Lab 部署方案：Cloudflare Workers + D1
 
-更新日期：2026-10-21。适用于本仓库的 Workers 实现，所有命令从 `gptibo` 仓库根目录执行。
+更新日期：2026-10-22。适用于本仓库的 Workers 实现，所有命令从当前仓库根目录执行。
+
+## 当前学习站发布范围
+
+公共入口现为「初构 · Firstform Lab」，包含学习领域首页、领域知识树和教程实验。实现与内容维护见 [firstform-lab.md](firstform-lab.md)。已有生产部署继续使用原 Worker、D1、自定义域名和 Secrets，不为了展示名称变化创建新的云资源。
+
+当前项目使用 Workers 免费计划，生产配置省略 `limits.cpu_ms`。所有真实购买与交易测试开关保持 `false`；`workers.dev` 和预览 URL 保持关闭。本文保留的历史收款、供货和交易验收内容仅作为协议研究资料，不作为本学习项目的执行计划。
+
+本次学习内容随静态构建发布，无新增数据库迁移。日常更新的顺序为：
+
+```sh
+npm test
+npm run lint
+npm run security:scan
+npm run worker:dry-run
+npm run worker:check -- --remote
+# 完成代码提交与推送后发布：
+npm run worker:deploy
+```
+
+发布后检查 `/`、`/learn/frontend`、`/learn/frontend/comfortable-page`、`/api/health`、后台初始化状态及交易关闭状态，并记录 Worker version ID 和代码提交。只有新增迁移时才执行生产迁移；迁移前遵循备份要求。
 
 ## 1. 部署范围与当前状态
 
@@ -33,7 +53,7 @@ Workers 当前可使用商城、管理后台、单层代理、订单、退款、
 
 ## 3. 账号、域名与邮件
 
-准备：Node.js 24、npm、Cloudflare 账号、一个由该账号管理 DNS 的域名、Resend 账号。域名可以在其他注册商购买，不要求特定后缀或固定价格。
+准备：Node.js 22.20+（本机已验证）或 24（CI）、npm、Cloudflare 账号、一个由该账号管理 DNS 的域名、Resend 账号。域名可以在其他注册商购买，不要求特定后缀或固定价格。
 
 正式交易建议使用 Workers Paid。基础费用目前为每月 5 美元起，超额另计；静态资源、D1 和邮件的额度按各服务当前定价核对。免费 D1 超过每日读写额度会拒绝查询，不能把“永久免费”作为营业保证。
 

@@ -1,5 +1,5 @@
 {
-  "name": "jiaoton-ai",
+  "name": "firstform-lab",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -64,5 +64,5 @@
     }
   },
   "license": "MIT",
-  "description": "Self-hosted storefront and administration with sanitized integration examples"
+  "description": "Firstform Lab: a personal learning laboratory for design, software and engineering"
 }

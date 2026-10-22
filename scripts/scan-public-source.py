@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 PUBLIC_HOSTS = {
+    'jiaotonai.cc',  # This learning project's explicitly configured public site.
     'api.cloudflare.com', 'challenges.cloudflare.com', 'developers.cloudflare.com',
     'api.resend.com', 'api.telegram.org', 'open.feishu.cn', 't.me',
     'openapi.alipay.com', 'openapi-sandbox.dl.alipaydev.com', 'qr.alipay.com',
