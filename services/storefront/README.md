@@ -2,6 +2,8 @@
 
 Go + Gin + PostgreSQL，API 与业务 Worker 使用同一个二进制。此版本仅面向全新安装；匿名化后的迁移与原部署不兼容，不导入生产快照。
 
+历史离线导入测试使用截至 `0043_partner_product_visibility.sql` 的固定 D1 结构，对应 `internal/importer/legacy-schema.json`。后续 Workers 迁移不自动加入这份历史测试数据；导出器继续拒绝未知表，避免静默丢失数据。当前学习站的 Workers/D1 部署仍执行全部 44 个迁移。
+
 ## Docker 本地启动
 
 需要 Docker Compose，命令在本目录执行。首先生成三个独立随机秘密（Python 3）：
